@@ -126,11 +126,176 @@ if (!function_exists('cmsCoreConfig')) {
             }
         }
 
-        return $items;
+        return cmsFilterPublishedNavItems($items);
+    }
+
+    /** Whether a CMS page payload should be shown on the public site. */
+    function cmsPageIsPublished(?array $page): bool
+    {
+        if (!is_array($page)) {
+            return false;
+        }
+
+        $data = $page['data'] ?? null;
+        if (!is_array($data) || $data === []) {
+            return false;
+        }
+
+        if (array_key_exists('is_active', $data)) {
+            $active = $data['is_active'];
+            if ($active === false || $active === 0 || $active === '0' || $active === 'false') {
+                return false;
+            }
+        }
+
+        $status = strtolower(trim((string) ($data['status'] ?? '')));
+        if ($status !== '') {
+            return in_array($status, ['published', 'publish', 'active', '1', 'true'], true);
+        }
+
+        $sections = $data['sections'] ?? null;
+        if (is_array($sections) && $sections !== []) {
+            return true;
+        }
+
+        return false;
     }
 
     /** @return list<array<string, mixed>> */
-    function cmsPagesIndex(): array
+    function cmsFilterPublishedNavItems(array $items): array
+    {
+        $visible = [];
+        foreach ($items as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            if (!cmsNavMenuItemIsPublished($item)) {
+                continue;
+            }
+            $children = $item['children'] ?? [];
+            if (is_array($children) && $children !== []) {
+                $item['children'] = cmsFilterPublishedNavItems($children);
+            }
+            $visible[] = $item;
+        }
+
+        return $visible;
+    }
+
+    function cmsNavMenuItemIsPublished(array $item): bool
+    {
+        $linkableType = (string) ($item['linkable_type'] ?? '');
+        $linkableId = $item['linkable_id'] ?? null;
+        if ($linkableId !== null && $linkableId !== '' && str_contains($linkableType, 'Page')) {
+            foreach (cmsAllPagesIndex() as $page) {
+                if ((string) ($page['id'] ?? '') === (string) $linkableId) {
+                    return cmsPageIsPublished(['data' => $page]);
+                }
+            }
+
+            return false;
+        }
+
+        $url = trim(strtolower((string) ($item['url'] ?? '')), '/');
+        if ($url === '' || $url === '#') {
+            return true;
+        }
+
+        foreach (cmsAllPagesIndex() as $page) {
+            $slug = (string) ($page['slug'] ?? '');
+            if ($slug === '') {
+                continue;
+            }
+            if (cmsPathFromSlug($slug) === $url) {
+                return cmsPageIsPublished(['data' => $page]);
+            }
+        }
+
+        $guess = $url . '-page-' . cmsBranchSuffix();
+        foreach (cmsAllPagesIndex() as $page) {
+            if ((string) ($page['slug'] ?? '') === $guess) {
+                return cmsPageIsPublished(['data' => $page]);
+            }
+        }
+
+        return true;
+    }
+
+    function cmsAbortIfUnpublishedPage(?array $page): void
+    {
+        if (cmsPageIsPublished($page)) {
+            return;
+        }
+
+        if (!headers_sent()) {
+            http_response_code(404);
+        }
+
+        $root = cmsSiteRootPath();
+        if (is_file($root . '/404.php')) {
+            include $root . '/404.php';
+        } else {
+            echo '404 Not Found';
+        }
+        exit;
+    }
+
+    function cmsSiteRootPath(): string
+    {
+        static $root = null;
+        if ($root !== null) {
+            return $root;
+        }
+
+        $fromShared = dirname(__DIR__, 2);
+        if (is_file($fromShared . '/404.php')) {
+            $root = $fromShared;
+            return $root;
+        }
+
+        $script = (string) ($_SERVER['SCRIPT_FILENAME'] ?? '');
+        if ($script !== '' && is_file($script)) {
+            $dir = dirname($script);
+            while ($dir !== '' && $dir !== dirname($dir)) {
+                if (is_file($dir . '/404.php')) {
+                    $root = $dir;
+                    return $root;
+                }
+                $dir = dirname($dir);
+            }
+        }
+
+        $root = $fromShared;
+        return $root;
+    }
+
+    function cmsAutoGuardCurrentScriptPage(): void
+    {
+        if (!empty($GLOBALS['cms_skip_published_guard'])) {
+            return;
+        }
+
+        $script = basename($_SERVER['SCRIPT_FILENAME'] ?? '', '.php');
+        if ($script === '' || in_array($script, [
+            'index', 'cms-page', 'header', 'footer', 'foot', '404', 'home',
+        ], true)) {
+            return;
+        }
+
+        if (!function_exists('cmsGuessSlugFromScript')) {
+            return;
+        }
+
+        $slug = cmsGuessSlugFromScript();
+        if ($slug === null || $slug === '') {
+            return;
+        }
+
+        cmsAbortIfUnpublishedPage(cmsFetchPageBySlug($slug));
+    }
+
+    /** @return list<array<string, mixed>> */
+    function cmsAllPagesIndex(): array
     {
         static $pages = null;
         if ($pages !== null) {
@@ -153,6 +318,25 @@ if (!function_exists('cmsCoreConfig')) {
         return $pages;
     }
 
+    /** @return list<array<string, mixed>> */
+    function cmsPagesIndex(): array
+    {
+        static $pages = null;
+        if ($pages !== null) {
+            return $pages;
+        }
+
+        $pages = [];
+        foreach (cmsAllPagesIndex() as $page) {
+            if (!cmsPageIsPublished(['data' => $page])) {
+                continue;
+            }
+            $pages[] = $page;
+        }
+
+        return $pages;
+    }
+
     function cmsFetchPageBySlug(string $slug): array
     {
         $slug = trim($slug);
@@ -166,7 +350,19 @@ if (!function_exists('cmsCoreConfig')) {
         }
 
         $page = cmsCmsGetJson('pages/' . rawurlencode($slug));
+        if (!is_array($page) || empty($page['data']['sections'] ?? null)) {
+            if (function_exists('cms_fetch_json_endpoint')) {
+                $retry = cms_fetch_json_endpoint('pages/' . $slug);
+                if (is_array($retry) && !empty($retry['data'])) {
+                    $page = $retry;
+                }
+            }
+        }
         if (!is_array($page)) {
+            $page = ['data' => []];
+        }
+
+        if (!cmsPageIsPublished($page)) {
             $page = ['data' => []];
         }
 
@@ -217,7 +413,7 @@ if (!function_exists('cmsCoreConfig')) {
             str_replace('-', '', $base) . '-page-' . $suffix,
         ];
 
-        $index = cmsPagesIndex();
+        $index = cmsAllPagesIndex();
         $known = [];
         foreach ($index as $page) {
             $known[(string) $page['slug']] = true;

@@ -85,3 +85,7 @@ if (!function_exists('cmsGhaziabadHeaderMeta')) {
         return $meta;
     }
 }
+
+if (function_exists('cmsAutoGuardCurrentScriptPage')) {
+    cmsAutoGuardCurrentScriptPage();
+}

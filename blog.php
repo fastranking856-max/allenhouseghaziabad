@@ -1,6 +1,7 @@
 <?php
-$page = "blog"
- ?>
+$page = "blog";
+require_once __DIR__ . '/includes/cms-page-helpers.php';
+?>
 <html lang="en">
 
 <head>
@@ -34,8 +35,6 @@ $page = "blog"
 
     <?php include "includes/header.php" ?>
     <?php
-    require_once __DIR__ . '/includes/environment.php';
-    require_once __DIR__ . '/includes/cms-page-helpers.php';
     cmsPrefetchBlogPage();
     require_once __DIR__ . '/includes/api-adapters.php';
     $blogItems = cmsBlogListForDisplay();

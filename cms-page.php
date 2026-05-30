@@ -10,14 +10,14 @@ $slug = cmsResolveSlugFromPath($path);
 
 if ($slug === null) {
     http_response_code(404);
-    include __DIR__ . '/index.php';
+    include __DIR__ . '/404.php';
     return;
 }
 
 $page = cmsFetchPageBySlug($slug);
 if (($page['data'] ?? []) === []) {
     http_response_code(404);
-    include __DIR__ . '/index.php';
+    include __DIR__ . '/404.php';
     return;
 }
 

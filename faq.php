@@ -1,5 +1,6 @@
 <?php
  $page = "faq";
+ require_once __DIR__ . '/includes/cms-page-helpers.php';
  ?>
 <html lang="en">
 
@@ -22,7 +23,6 @@
 
     <?php include "includes/header.php" ?>
     <?php
-    require_once __DIR__ . '/includes/cms-page-helpers.php';
     require_once __DIR__ . '/includes/api-adapters.php';
     $faq_page = cmsFetchGhaziabadPage('faqs-page-ghaziabad');
     $faqHtml = cmsSectionHtml(cmsPageSection($faq_page, 1));

@@ -1,3 +1,7 @@
+<?php
+require_once __DIR__ . '/includes/cms-page-helpers.php';
+$clubs_content = cmsBeyondAcademicsHtml('clubs-page-ghaziabad');
+?>
 <html lang="en">
 
 <head>
@@ -8,10 +12,6 @@
 <meta name="description" content="Allenhouse Ghaziabad offers club activities that boost confidence, teamwork, and real-world skills beyond the classroom.">
     <?php include "includes/head.php" ?>
 </head>
-<?php
-require_once __DIR__ . '/includes/cms-page-helpers.php';
-$clubs_content = cmsBeyondAcademicsHtml('clubs-page-ghaziabad');
-?>
 
 <body>
 

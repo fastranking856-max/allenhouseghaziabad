@@ -1,5 +1,6 @@
 <?php
 $page = "about-us";
+require_once __DIR__ . '/includes/cms-page-helpers.php';
 
 ?>
 <html lang="en">
