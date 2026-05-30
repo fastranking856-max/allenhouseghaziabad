@@ -107,6 +107,10 @@ $contactSiteBaseUrl = rtrim(
             emailErr.classList.add("hidden");
         }
 
+        if (message === "") {
+            ok = false;
+        }
+
         if (!ok) {
             submitBtn.disabled = false;
             submitBtn.textContent = "Submit";
@@ -119,12 +123,7 @@ $contactSiteBaseUrl = rtrim(
             body: JSON.stringify({ name: name, mobile: mobile, email: email, query: query, message: message })
         })
         .then(function (response) {
-            return response.json().then(function (data) {
-                if (!response.ok || data.success === false) {
-                    throw new Error(data.message || "Submission failed");
-                }
-                return data;
-            });
+            return window.cmsParseProxyJson(response);
         })
         .then(function () {
             if (successPopup) {

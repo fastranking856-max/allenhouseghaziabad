@@ -50,6 +50,8 @@ if (!function_exists('cms_enquiry_source_fields')) {
 
 if (!function_exists('cms_normalize_enquiry_payload')) {
     /**
+     * Map legacy camelCase form payloads to CMS /api/enquiries schema.
+     *
      * @return array<string, mixed>
      */
     function cms_normalize_enquiry_payload(array $input): array
@@ -120,37 +122,8 @@ if (!function_exists('cms_post_enquiry')) {
         $payload = cms_normalize_enquiry_payload($input);
         $url = rtrim(CMS_API_URL, '/') . '/enquiries';
 
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/json',
-            'Accept: application/json',
-        ]);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 20);
-        if (function_exists('apply_curl_ssl_options')) {
-            apply_curl_ssl_options($ch);
-        }
+        require_once __DIR__ . '/cms-http.php';
 
-        $response = curl_exec($ch);
-        $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($response === false || $status < 200) {
-            return [
-                'status' => $status > 0 ? $status : 502,
-                'body' => json_encode([
-                    'success' => false,
-                    'message' => 'Unable to submit enquiry. Please try again.',
-                ]),
-            ];
-        }
-
-        return [
-            'status' => $status,
-            'body' => (string) $response,
-        ];
+        return cms_curl_post_json($url, $payload, 'Unable to submit enquiry. Please try again.');
     }
 }

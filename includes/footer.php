@@ -429,6 +429,7 @@ $newsletterButton = $footerMeta['newsletter_button'] ?? 'Subscribe';
 <?php endif; ?>
 
 <!-- Newsletter subscription -->
+<?php include __DIR__ . '/form-proxy-client.php'; ?>
 <?php include __DIR__ . '/newsletter-script.php'; ?>
 
 <!-- Footer submenu toggle (Important Links: Media & Events, Information) -->

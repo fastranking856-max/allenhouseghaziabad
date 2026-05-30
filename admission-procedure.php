@@ -219,7 +219,18 @@
         </div>
     </div>
 
+    <?php
+    require_once __DIR__ . '/includes/environment.php';
+    $siteBaseUrl = rtrim(
+        ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http')
+        . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost')
+        . rtrim(site_base_url(), '/'),
+        '/'
+    );
+    ?>
+    <?php include __DIR__ . '/includes/form-proxy-client.php'; ?>
     <script>
+        const SITE_BASE_URL = <?= json_encode($siteBaseUrl, JSON_UNESCAPED_SLASHES) ?>;
         (function() {
             function getParam(name) {
                 const urlParams = new URLSearchParams(window.location.search);
@@ -363,18 +374,18 @@
                 source_type: "Website",
             };
 
-            fetch(`proxy/admission-proxy`, {
+            fetch(SITE_BASE_URL + "/proxy/admission-proxy", {
                     method: "POST",
                     headers: {
-                        "Content-Type": "application/json"
+                        "Content-Type": "application/json",
+                        "Accept": "application/json"
                     },
                     body: JSON.stringify(payload)
                 })
-                .then(response => {
-                    if (!response.ok) throw new Error("Error: " + response.statusText);
-                    return response.json();
+                .then(function (response) {
+                    return window.cmsParseProxyJson(response);
                 })
-                .then(data => {
+                .then(function () {
                     document.getElementById("AdmissionFormPopup").classList.remove("hidden");
                     closePopup()
                     setTimeout(() => {

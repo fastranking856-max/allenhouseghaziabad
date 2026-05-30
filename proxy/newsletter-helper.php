@@ -61,39 +61,21 @@ if (!function_exists('cms_post_subscriber')) {
         }
 
         $url = rtrim(CMS_API_URL, '/') . '/subscribers';
-        $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POST => true,
-            CURLOPT_HTTPHEADER => [
-                'Content-Type: application/json',
-                'Accept: application/json',
-            ],
-            CURLOPT_POSTFIELDS => json_encode($payload),
-            CURLOPT_CONNECTTIMEOUT => 5,
-            CURLOPT_TIMEOUT => 20,
-        ]);
-        if (function_exists('apply_curl_ssl_options')) {
-            apply_curl_ssl_options($ch);
+
+        require_once __DIR__ . '/cms-http.php';
+
+        $result = cms_curl_post_json($url, $payload, 'Unable to subscribe. Please try again.');
+        if ($result['status'] === 422) {
+            $decoded = json_decode($result['body'], true);
+            $msg = cms_api_error_message(is_array($decoded) ? $decoded : null, '');
+            if (stripos($msg, 'already been taken') !== false) {
+                return [
+                    'status' => 200,
+                    'body' => json_encode(['success' => true, 'message' => 'Subscription successful']),
+                ];
+            }
         }
 
-        $response = curl_exec($ch);
-        $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($response === false || $status < 200) {
-            return [
-                'status' => $status > 0 ? $status : 502,
-                'body' => json_encode([
-                    'success' => false,
-                    'message' => 'Unable to subscribe. Please try again.',
-                ]),
-            ];
-        }
-
-        return [
-            'status' => $status,
-            'body' => (string) $response,
-        ];
+        return $result;
     }
 }

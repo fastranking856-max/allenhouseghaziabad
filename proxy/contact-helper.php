@@ -19,6 +19,8 @@ if (!function_exists('cms_contact_pick')) {
 
 if (!function_exists('cms_normalize_contact_query_payload')) {
     /**
+     * Map contact form fields to CMS /api/contact-queries schema.
+     *
      * @return array<string, mixed>
      */
     function cms_normalize_contact_query_payload(array $input): array
@@ -66,39 +68,9 @@ if (!function_exists('cms_post_contact_query')) {
         }
 
         $url = rtrim(CMS_API_URL, '/') . '/contact-queries';
-        $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POST => true,
-            CURLOPT_HTTPHEADER => [
-                'Content-Type: application/json',
-                'Accept: application/json',
-            ],
-            CURLOPT_POSTFIELDS => json_encode($payload),
-            CURLOPT_CONNECTTIMEOUT => 5,
-            CURLOPT_TIMEOUT => 20,
-        ]);
-        if (function_exists('apply_curl_ssl_options')) {
-            apply_curl_ssl_options($ch);
-        }
 
-        $response = curl_exec($ch);
-        $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        require_once __DIR__ . '/cms-http.php';
 
-        if ($response === false || $status < 200) {
-            return [
-                'status' => $status > 0 ? $status : 502,
-                'body' => json_encode([
-                    'success' => false,
-                    'message' => 'Unable to submit contact form. Please try again.',
-                ]),
-            ];
-        }
-
-        return [
-            'status' => $status,
-            'body' => (string) $response,
-        ];
+        return cms_curl_post_json($url, $payload, 'Unable to submit contact form. Please try again.');
     }
 }

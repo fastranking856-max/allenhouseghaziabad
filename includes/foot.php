@@ -2,9 +2,22 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Glide.js/3.0.2/glide.js"></script>
 <?php require_once __DIR__ . '/glide-safe-script.php'; glideSafeScript(); ?>
 <script src="https://unpkg.com/swiper/swiper-bundle.min.js"></script>
+<?php include __DIR__ . '/form-proxy-client.php'; ?>
+<?php
+if (!function_exists('site_base_url')) {
+    require_once __DIR__ . '/environment.php';
+}
+$jhansiSiteBaseUrl = rtrim(
+    ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http')
+    . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost')
+    . rtrim(site_base_url(), '/'),
+    '/'
+);
+?>
 
 <script>
 (function () {
+    var SITE_BASE_URL = <?= json_encode($jhansiSiteBaseUrl, JSON_UNESCAPED_SLASHES) ?>;
     var DEBUG = /^(localhost|127\.0\.0\.1)/.test(window.location.hostname);
     if (window.performance && performance.mark) {
         performance.mark("ah:foot:init:start");
@@ -74,10 +87,6 @@
         var popup = byId("popupForm");
         var openBtn = byId("openPopup");
         var closeBtn = byId("closePopup");
-        var sessionSelect = byId("esession");
-        var gradeSelect = byId("egrade");
-        var citySelect = byId("ecity");
-        var apiLoaded = false;
 
         function closePopup() {
             if (popup) popup.classList.add("hidden");
@@ -85,21 +94,6 @@
         function openPopup() {
             if (!popup) return;
             popup.classList.remove("hidden");
-            if (apiLoaded) return;
-
-            Promise.all([
-                fetch("includes/ajax-session.php").then(function (r) { return r.text(); }),
-                fetch("includes/grade-api.php").then(function (r) { return r.text(); }),
-                fetch("includes/get-city.php").then(function (r) { return r.text(); })
-            ]).then(function (responses) {
-                if (sessionSelect) sessionSelect.innerHTML = responses[0];
-                if (gradeSelect) gradeSelect.innerHTML = responses[1];
-                if (citySelect) citySelect.innerHTML = responses[2];
-                apiLoaded = true;
-                if (DEBUG) console.log("[AH] Popup APIs loaded once");
-            }).catch(function (err) {
-                console.error("Popup API load failed:", err);
-            });
         }
 
         window.openPopup = openPopup;
@@ -184,6 +178,15 @@
                 source_type: "Website"
             };
 
+            var checkbox = byId("popupCheckbox");
+            var checkboxError = byId("checkboxError");
+            if (checkbox && !checkbox.checked) {
+                if (checkboxError) checkboxError.classList.remove("hidden");
+                return;
+            }
+            if (checkboxError) checkboxError.classList.add("hidden");
+
+            var classError = byId("classError");
             var valid = regex.name.test(payload.studentName)
                 && regex.name.test(payload.parentName)
                 && regex.mobile.test(payload.mobile)
@@ -192,21 +195,26 @@
                 && payload.grade !== ""
                 && payload.session !== ""
                 && payload.city !== "";
-            if (!valid) return;
+            if (!valid) {
+                if (classError) classError.classList.toggle("hidden", payload.grade !== "");
+                var cityError = byId("city-error");
+                if (cityError) cityError.classList.toggle("hidden", payload.city !== "");
+                return;
+            }
+            if (classError) classError.classList.add("hidden");
 
             if (submitBtn) {
                 submitBtn.disabled = true;
                 submitBtn.textContent = "Submitting...";
             }
 
-            fetch("proxy/admission-proxy", {
+            fetch(SITE_BASE_URL + "/proxy/admission-proxy", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", "Accept": "application/json" },
                 body: JSON.stringify(payload)
             })
             .then(function (response) {
-                if (!response.ok) throw new Error("HTTP " + response.status);
-                return response.json();
+                return window.cmsParseProxyJson(response);
             })
             .then(function () {
                 var success = byId("esuccessPopup");
@@ -216,11 +224,14 @@
                 }
                 if (window.closePopup) window.closePopup();
                 form.reset();
+                var cityDisplay = document.querySelector("#popupForm .customSelect .selected-text");
+                if (cityDisplay) cityDisplay.textContent = "Select City";
                 sessionStorage.removeItem("leadSource");
                 if (DEBUG) console.log("[AH] Enquiry submitted");
             })
             .catch(function (err) {
                 console.error("Enquiry form submit failed:", err);
+                alert("Unable to submit enquiry. Please try again.");
             })
             .finally(function () {
                 if (submitBtn) {
@@ -268,6 +279,7 @@
                 realSelect.value = e.target.dataset.value;
                 display.textContent = e.target.textContent;
                 dropdown.classList.add("hidden");
+                realSelect.dispatchEvent(new Event("change", { bubbles: true }));
             });
             document.addEventListener("click", function (e) {
                 if (!wrapper.contains(e.target)) dropdown.classList.add("hidden");

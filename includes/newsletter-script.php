@@ -58,12 +58,7 @@ $newsletterSiteBaseUrl = rtrim(
             body: JSON.stringify({ email: email })
         })
         .then(function (response) {
-            return response.json().then(function (data) {
-                if (!response.ok || data.success === false) {
-                    throw new Error(data.message || "Subscription failed");
-                }
-                return data;
-            });
+            return window.cmsParseProxyJson(response);
         })
         .then(function () {
             popup.classList.remove("hidden");

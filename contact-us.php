@@ -170,6 +170,7 @@ $page = "contact-us";
                 height="450" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
         </div>
 
+        <?php include "includes/form-proxy-client.php"; ?>
         <?php include "includes/contact-form-script.php"; ?>
 
         <?php include "includes/footer.php" ?>

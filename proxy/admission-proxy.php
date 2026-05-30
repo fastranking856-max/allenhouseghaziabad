@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/config.php';
+require_once dirname(__DIR__) . '/includes/environment.php';
 require_once __DIR__ . '/enquiry-helper.php';
 
 $input = file_get_contents('php://input');
