@@ -1,0 +1,33 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
+  "framework": null,
+  "outputDirectory": "public",
+  "installCommand": "npm install",
+  "buildCommand": "node scripts/vercel-standalone-build.mjs",
+  "functions": {
+    "api/index.php": {
+      "runtime": "vercel-php@0.7.4",
+      "maxDuration": 30
+    }
+  },
+  "redirects": [
+    {
+      "source": "/vercel-slim/:path*",
+      "destination": "/:path*",
+      "permanent": false
+    }
+  ],
+  "routes": [
+    {
+      "src": "/vercel-slim/(.*)",
+      "dest": "/$1"
+    },
+    {
+      "src": "/(.*\\.(?:css|js|mjs|png|jpg|jpeg|gif|webp|svg|ico|woff2?|ttf|eot|map|json|xml|txt|webmanifest|apk|pdf))",
+      "dest": "/$1"
+    },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/api/index.php" }
+  ]
+}

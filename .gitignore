@@ -1,0 +1,19 @@
+node_modules/
+vendor/
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
+cache/
+**/cache/
+_probe*
+_carousel*.json
+public/
+vercel-slim/
+deploy-patch/
+test.php
+APS_Brochure_Ghaziabad_Final Printable File.pdf
